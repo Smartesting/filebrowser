@@ -1,18 +1,24 @@
 # Deployment & Smoke Test
 
-## Deploy
+## Build from Source (required for mutation scenarios)
 
 ```bash
-docker run -d --name filebrowser -p 8080:80 filebrowser/filebrowser --password '<bcrypt-hash>'
-```
+# 1. Build frontend
+cd frontend
+pnpm install
+pnpm run build
+cd ..
 
-Generate the bcrypt hash:
+# 2. Build Go backend
+go mod download
+go build -o filebrowser .
 
-```bash
+# 3. Generate bcrypt password hash
 python3 -c "import bcrypt; print(bcrypt.hashpw(b'adminadminadmin', bcrypt.gensalt()).decode())"
-```
 
-Pass the resulting hash to `--password`.
+# 4. Run
+./filebrowser --password '<bcrypt-hash>'
+```
 
 ## Credentials
 
@@ -23,10 +29,11 @@ Pass the resulting hash to `--password`.
 ## Reset
 
 ```bash
-docker stop filebrowser && docker rm filebrowser
+pkill filebrowser
+rm -f filebrowser.db
 ```
 
-Then re-run the deploy command above.
+Then re-run step 4 above.
 
 ## Smoke Test
 
@@ -41,6 +48,8 @@ Then re-run the deploy command above.
 
 ## Build Notes
 
-- Runs as UID 1000 inside the container; avoid host volume mounts unless ownership matches.
+- **Must build from source** to create mutation scenarios. The official Docker image (`filebrowser/filebrowser`) is a pre-built binary that cannot be modified.
+- Frontend uses `pnpm` + `vite`; backend is Go 1.22+.
 - Uses BoltDB (`filebrowser.db`) for user/settings storage.
 - Quick setup auto-creates the admin user only when the database is missing; using `--password` skips random password generation.
+- Binary defaults to `127.0.0.1:8080`.
